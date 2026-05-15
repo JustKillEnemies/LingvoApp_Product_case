@@ -23,30 +23,88 @@
 Далее нужно спроектировать сущности пользователя и события, которые будут генерироваться скриптом
 
 таблица пользователь:
-user_id - айди пользователя
-platform - iOS / Android
-install_at - дата и время установки
-app_version - версия приложения
-
-is_premium - платный или бесплатный
-
-goal - цель обучения
-onboarding_level - стартовый уровень
-plan_on_study_time - сколько будет заниматься 
-name - имя
-country - страна
-age - возраст
+| Поле                 | Описание                                    |
+|----------------------|---------------------------------------------|
+| user_id              | айди пользователя                           |
+| platform             | iOS / Android                               |
+| install_at           | дата и время установки                      |
+| app_version          | версия приложения                           |
+| is_premium           | платный или бесплатный                      |
+| goal                 | цель обучения                               |
+| onboarding_level     | стартовый уровень                           |
+| plan_on_study_time   | сколько будет заниматься                    |
+| name                 | имя                                         |
+| country              | страна                                      |
+| age                  | возраст                                     |
 
 
 таблица событие/евент:
-
-event_id - айди события
-event_time - таймстемп действия
-user_id - айди юзера совершившего событие
-event_name - название события
-event_properties - подробности события
+| Поле                 | Описание                                    |
+|----------------------|---------------------------------------------|
+| event_id             | айди события                                |
+| event_time           | таймстемп действия                          |
+| user_id              | айди юзера совершившего событие             |
+| event_name           | название события                            |
+| event_properties     | подробности события                         |
 
 
 Структура, которая будет использоваться для генерации данных, разделенная по этапам пути пользователя:
 
-глобальные свойства 
+Глобальные свойства
+| свойство           | Описание                               |
+|--------------------|----------------------------------------|
+| event_id           | Уникальный идентификатор события       |
+| event_time         | Время наступления события              |
+| user_id            | Идентификатор пользователя             |
+| app_version        | Версия приложения                      |
+| platform           | Платформа (iOS, Android и т.д.)        |
+| device_model       | Модель устройства                      |
+| country            | Страна пользователя                    |
+| session_id         | Идентификатор сессии                   |
+
+
+Этап 1. Первый запуск и онбординг
+Задача - познакомить  юзера с  приложением и понять, на каком этапе ручного обучения юзеры отваливаются.
+| Название события (event_name) | Свойства (event_properties)                                                   |
+|-------------------------------|-------------------------------------------------------------------------------|
+| app_launched                  | is_first_launch (true/false), traffic_source (откуда пришел).                 |
+| tutorial_step_viewed          | step_index (номер шага), step_name (название шага), total_steps (всего шагов) |
+| tutorial_step_completed       | step_index, step_name, time_spent_on_step                                     |
+| tutorial_skipped              | step_index(на каком шаге пропустил)                                           |
+| tutorial_completed            | total_time_spent( суммарное время прохождения туториала)                      |
+
+Этап 2. Сегментация
+Задача - собрать портерт пользователя для будущих когорт
+когорта - объединённая по общему признаку группа 
+| Название события (event_name) | Свойства (event_properties)                                                   |
+|-------------------------------|-------------------------------------------------------------------------------|
+| quiz_started                  | quiz_id (версия квиза).                                                       |
+| quiz_answer_selected          | question_id (например, "goal"), question_text, answer_id, answer_text (например, "Для работы"). |
+| quiz_completed                | user_intent (итоговая цель), assigned_level (уровень, определенный квизом).   |
+| registration_started          | entry_point (после квиза, из настроек, с главного экрана).                    |
+| registration_success          | registration_method (google, apple, email, facebook).                         |
+
+Этап 3. Основной цикл обучения
+Задача - измерить глубину потребления контента и его сложность
+| Название события (event_name) | Свойства (event_properties)                                                                 |
+|-------------------------------|----------------------------------------------------------------------------------------------|
+| lesson_started                | lesson_id, lesson_name, lesson_type (Grammar, Vocabulary, Speaking, Online-Seminar), is_premium_content (true/false), difficulty_level. |
+| lesson_completed              | lesson_id, lesson_type, score_percentage (0-100), accuracy_rate (доля верных ответов), duration_seconds (время в уроке), total_mistakes_count, points_earned. |
+| lesson_failed                 | lesson_id, last_question_id (на чем бросил), reason (exit_button, time_out, too_many_mistakes). |
+| practice_mode_entered         | practice_type (карточки, аудио, написание слов).                                              |
+
+Этап 4. Экономика и монетизация
+Задача - найти самые эффективные триггеры для покупки
+| Название события (event_name) | Свойства (event_properties)                                                                 |
+|-------------------------------|----------------------------------------------------------------------------------------------|
+| paywall_viewed                | source (кнопка в профиле, замок на уроке, после туториала, системный пуш), paywall_version (A/B тест дизайна), available_plans (monthly, annual, lifetime). |
+| purchase_initiated            | product_id, price_local, currency_local, plan_type (например, "annual").                     |
+| purchase_success              | transaction_id, product_id, revenue_usd (нормализованная сумма), currency, subscription_period_days. |
+| purchase_failed               | product_id, error_code (например, "insufficient_funds"), error_description.                  |
+| subscription_canceled         | subscription_id, reason (если указана), days_since_start.                                    |
+
+Этап 5. Техническое состояние и ошибки
+| Название события (event_name) | Свойства (event_properties)                                                   |
+|-------------------------------|-------------------------------------------------------------------------------|
+| error_occurred                | error_type (network, logic, ui), error_message, screen_name (где произошла ошибка). |
+| app_crashed                   | stack_trace (кратко), last_event_before_crash.                                |
