@@ -122,6 +122,7 @@
 2. имя контейнера
 3. пробрасываем порты 
 4. добавляем папку-хранилище образа и папку для csv файлов 
+
 в образе superset:
 1. мы говорим, что нужно собрать образ, а не качать
 2. указываем папку текущую, откуда будут искаться файлы для сборки 
@@ -135,8 +136,13 @@
 
 Далее идёт инициализация Superset
 1. Создаем админа с помощью команды 
-docker exec -it superset superset fab create-admin --username my_name --firstname Grigoriy --lastname Dziuba --email my_mail --password my_password
+
+ docker exec -it superset superset fab create-admin --username my_name --firstname Grigoriy --lastname Dziuba --email my_mail --password my_password 
+ 
 2. обновляем БД самого superset
-docker exec -it superset superset db upgrade
+
+ docker exec -it superset superset db upgrade
+
 3. инициализируем роли и доступы
-docker exec -it superset superset init
+
+ docker exec -it superset superset init 
