@@ -115,53 +115,28 @@
 скрипт этот представлен в main.py 
 Он генерирует события с помощью библиотеки faker, а затем с помощью pandas создает два .csv файла, в одном информация про пользователей, в другом про события
 
-После этого нужно развернуть clickhouse и power bi
+После этого нужно развернуть clickhouse с apache superset в докере, для этого напишем docker-compose файл, где будут образы clickhouse и apache superset, так же для работы superset нужно написать небольшой Dockerfile, который создает некий драйвер для работы superset с clickhouse
 
-1. скачаем power bi с microsoft store и установим драйвер ODBC
-2. Создаем и запускаем контейнер с ClickHouse со следующими параметрами:
-docker run -d --name clickhouse-server \
-  -e CLICKHOUSE_USER=<username> \
-  -e CLICKHOUSE_PASSWORD=<password> \
-  -e CLICKHOUSE_DB=lingvodb \
-  -p 8123:8123 -p 9000:9000 \
-  clickhouse/clickhouse-server
+в образе clickhouse мы указываем:
+1. сам образ, который качаем
+2. имя контейнера
+3. пробрасываем порты 
+4. добавляем папку-хранилище образа и папку для csv файлов 
+в образе superset:
+1. мы говорим, что нужно собрать образ, а не качать
+2. указываем папку текущую, откуда будут искаться файлы для сборки 
+3. указываем на наш Dockerfile с инструкцией для сборки
+4. задаем имя контейнера
+5. пробрасываем порты
+6. добавляем папку-хранилище образа
+7. указываем, что зависит от образа clickhouse
 
+Затем поднимаем все с помощью команды docker-compose up -d
 
-3. Создадим таблицы в ClickHouse 
-CREATE TABLE users (
-    user_id String,
-    platform String,
-    install_at DateTime,
-    app_version String,
-    is_premium String,
-    goal String,
-    onboarding_level String,
-    plan_on_study_time UInt16,
-    name String,
-    country String,
-    age UInt8
-) ENGINE = MergeTree()
-ORDER BY user_id;
---- 
-
-CREATE TABLE events (
-    event_id String,
-    event_time DateTime,
-    user_id String,
-    app_version String,
-    platform String,
-    device_model String,
-    country String,
-    session_id String,
-    event_name String,
-    event_properties String
-) ENGINE = MergeTree()
-ORDER BY (event_time, event_name, user_id);
-
-4. ЗАнесем данные в созданные таблицы:
-
-INSERT INTO users FROM INFILE '/users.csv' FORMAT CSVWithNames;
-
-INSERT INTO events FROM INFILE '/events.csv' FORMAT CSVWithNames;
-
-
+Далее идёт инициализация Superset
+1. Создаем админа с помощью команды 
+docker exec -it superset superset fab create-admin --username my_name --firstname Grigoriy --lastname Dziuba --email my_mail --password my_password
+2. обновляем БД самого superset
+docker exec -it superset superset db upgrade
+3. инициализируем роли и доступы
+docker exec -it superset superset init
