@@ -20,95 +20,67 @@
 4. Количество и типы пройденных уроков, время внутри каждого занятия, процент правильных ответов, DAU, MAU, WAU, ретеншн
 5. Количество переходов на экран оплаты, конверсия из просмотра в покупку, средний доход с пользователя.
 
-Далее нужно спроектировать сущности пользователя и события, которые будут генерироваться скриптом
+Далее нужно спроектировать сущности БД, которые будут генерироваться скриптом
 
-таблица пользователь:
-| Поле                 | Описание                                    |
-|----------------------|---------------------------------------------|
-| user_id              | айди пользователя                           |
-| platform             | iOS / Android                               |
-| install_at           | дата и время установки                      |
-| app_version          | версия приложения                           |
-| is_premium           | платный или бесплатный                      |
-| goal                 | цель обучения                               |
-| onboarding_level     | стартовый уровень                           |
-| plan_on_study_time   | сколько будет заниматься                    |
-| name                 | имя                                         |
-| country              | страна                                      |
-| age                  | возраст                                     |
+## 1. Пользователи 
 
+| Поле | Описание |
+|------|----------|
+| user_id | Уникальный идентификатор пользователя |
+| install_time | Дата и время установки приложения |
+| name | Имя пользователя |
+| age | Возраст пользователя |
+| country | Страна пользователя |
+| goal | Цель обучения |
+| onboarding_level | Стартовый уровень языка  |
+| plan_on_study_time | Планируемая частота занятий минут в день |
+| is_premium | Флаг премиум-статуса |
 
-таблица событие/евент:
-| Поле                 | Описание                                    |
-|----------------------|---------------------------------------------|
-| event_id             | айди события                                |
-| event_time           | таймстемп действия                          |
-| user_id              | айди юзера совершившего событие             |
-| event_name           | название события                            |
-| event_properties     | подробности события                         |
+## 2. Каталог уроков 
 
+| Поле | Описание |
+|------|----------|
+| lesson_id | Уникальный идентификатор урока |
+| lesson_name | Название урока |
+| lesson_type | Тип урока  |
+| difficulty_level | Уровень сложности  |
+| is_premium | Доступен ли урок только по подписке  |
 
-Структура, которая будет использоваться для генерации данных, разделенная по этапам пути пользователя:
+## 3. Сырой лог событий
 
-Глобальные свойства
-| свойство           | Описание                               |
-|--------------------|----------------------------------------|
-| event_id           | Уникальный идентификатор события       |
-| event_time         | Время наступления события              |
-| user_id            | Идентификатор пользователя             |
-| app_version        | Версия приложения                      |
-| platform           | Платформа (iOS, Android и т.д.)        |
-| device_model       | Модель устройства                      |
-| country            | Страна пользователя                    |
-| session_id         | Идентификатор сессии                   |
+| Поле | Описание |
+|------|----------|
+| event_id | Уникальный идентификатор события |
+| event_time | Время наступления события  |
+| user_id | Идентификатор пользователя |
+| platform | Платформа (iOS / Android) |
+| device_model | Модель устройства |
+| app_version | Версия приложения |
+| event_name | Название события |
+| event_properties | Дополнительные свойства события в формате JSON |
 
+## 4. Факт успеваемости 
 
-Этап 1. Первый запуск и онбординг
-Задача - познакомить  юзера с  приложением и понять, на каком этапе ручного обучения юзеры отваливаются.
-| Название события (event_name) | Свойства (event_properties)                                                   |
-|-------------------------------|-------------------------------------------------------------------------------|
-| app_launched                  | is_first_launch (true/false), traffic_source (откуда пришел).                 |
-| tutorial_step_viewed          | step_index (номер шага), step_name (название шага), total_steps (всего шагов) |
-| tutorial_step_completed       | step_index, step_name, time_spent_on_step                                     |
-| tutorial_skipped              | step_index(на каком шаге пропустил)                                           |
-| tutorial_completed            | total_time_spent( суммарное время прохождения туториала)                      |
+| Поле | Описание |
+|------|----------|
+| user_id | Идентификатор пользователя |
+| lesson_id | Идентификатор урока |
+| started_at | Время начала урока |
+| completed_at | Время завершения урока |
+| status | Статус прохождения |
+| score_percentage | Процент правильных ответов  |
+| time_spent_sec | Время, затраченное на урок (секунды) |
+| mistakes_count | Количество ошибок |
 
-Этап 2. Сегментация
-Задача - собрать портерт пользователя для будущих когорт
-когорта - объединённая по общему признаку группа 
-| Название события (event_name) | Свойства (event_properties)                                                   |
-|-------------------------------|-------------------------------------------------------------------------------|
-| quiz_started                  | quiz_id (версия квиза).                                                       |
-| quiz_answer_selected          | question_id (например, "goal"), question_text, answer_id, answer_text (например, "Для работы"). |
-| quiz_completed                | user_intent (итоговая цель), assigned_level (уровень, определенный квизом).   |
-| registration_started          | entry_point (после квиза, из настроек, с главного экрана).                    |
-| registration_success          | registration_method (google, apple, email, facebook).                         |
+## 5. Факт оплат
 
-Этап 3. Основной цикл обучения
-Задача - измерить глубину потребления контента и его сложность
-| Название события (event_name) | Свойства (event_properties)                                                                 |
-|-------------------------------|----------------------------------------------------------------------------------------------|
-| lesson_started                | lesson_id, lesson_name, lesson_type (Grammar, Vocabulary, Speaking, Online-Seminar), is_premium_content (true/false), difficulty_level. |
-| lesson_completed              | lesson_id, lesson_type, score_percentage (0-100), accuracy_rate (доля верных ответов), duration_seconds (время в уроке), total_mistakes_count, points_earned. |
-| lesson_failed                 | lesson_id, last_question_id (на чем бросил), reason (exit_button, time_out, too_many_mistakes). |
-| practice_mode_entered         | practice_type (карточки, аудио, написание слов).                                              |
-
-Этап 4. Экономика и монетизация
-Задача - найти самые эффективные триггеры для покупки
-| Название события (event_name) | Свойства (event_properties)                                                                 |
-|-------------------------------|----------------------------------------------------------------------------------------------|
-| paywall_viewed                | source (кнопка в профиле, замок на уроке, после туториала, системный пуш), paywall_version (A/B тест дизайна), available_plans (monthly, annual, lifetime). |
-| purchase_initiated            | product_id, price_local, currency_local, plan_type (например, "annual").                     |
-| purchase_success              | transaction_id, product_id, revenue_usd (нормализованная сумма), currency, subscription_period_days. |
-| purchase_failed               | product_id, error_code (например, "insufficient_funds"), error_description.                  |
-| subscription_canceled         | subscription_id, reason (если указана), days_since_start.                                    |
-
-Этап 5. Техническое состояние и ошибки
-| Название события (event_name) | Свойства (event_properties)                                                   |
-|-------------------------------|-------------------------------------------------------------------------------|
-| error_occurred                | error_type (network, logic, ui), error_message, screen_name (где произошла ошибка). |
-| app_crashed                   | stack_trace (кратко), last_event_before_crash.                                |
-
+| Поле | Описание |
+|------|----------|
+| transaction_id | Уникальный идентификатор транзакции |
+| user_id | Идентификатор пользователя |
+| event_time | Время совершения платежа |
+| plan_type | Тип плана  |
+| revenue_rub | Сумма платежа в рублях |
 
 
 Далее создаем скрипт, который накидает автоматически фейковые данные для дальнейшей работы с ними
@@ -118,48 +90,102 @@
 После этого нужно развернуть clickhouse и power bi
 
 1. скачаем power bi с microsoft store и установим драйвер ODBC
+
 2. Создаем и запускаем контейнер с ClickHouse со следующими параметрами:
 docker run -d --name clickhouse-server \
-  -e CLICKHOUSE_USER=<username> \
-  -e CLICKHOUSE_PASSWORD=<password> \
+  -e CLICKHOUSE_USER="myusername" \
+  -e CLICKHOUSE_PASSWORD="mypassword" \
   -e CLICKHOUSE_DB=lingvodb \
   -p 8123:8123 -p 9000:9000 \
   clickhouse/clickhouse-server
 
+3. Копируем сгенерированные цсв файлы в контейнер с помощью команд:
+"docker cp dim_users.csv clickhouse-server:/var/lib/clickhouse/user_files/"
 
-3. Создадим таблицы в ClickHouse 
-CREATE TABLE users (
+"docker cp dim_lessons_catalog.csv clickhouse-server:/var/lib/clickhouse/user_files/"
+
+"docker cp raw_events.csv clickhouse-server:/var/lib/clickhouse/user_files/"
+
+"docker cp fact_learning.csv clickhouse-server:/var/lib/clickhouse/user_files/"
+
+"docker cp fact_payments.csv clickhouse-server:/var/lib/clickhouse/user_files/"
+
+4. Подключаемся к кликхаусу с консоли с помощью команды: docker exec -it clickhouse-server clickhouse-client -u "myusername" --password "mypassword" -d lingvodb
+
+
+5. Создадим таблицы в ClickHouse 
+-- 1. пользователи
+CREATE TABLE dim_users (
     user_id String,
-    platform String,
-    install_at DateTime,
-    app_version String,
-    is_premium String,
+    install_time DateTime,
+    name String,
+    age UInt8,
+    country String,
     goal String,
     onboarding_level String,
     plan_on_study_time UInt16,
-    name String,
-    country String,
-    age UInt8
+    is_premium UInt8
 ) ENGINE = MergeTree()
 ORDER BY user_id;
---- 
 
-CREATE TABLE events (
+-- 2. каталог уроков
+CREATE TABLE dim_lessons_catalog (
+    lesson_id String,
+    lesson_name String,
+    lesson_type String,
+    difficulty_level UInt8,
+    is_premium UInt8
+) ENGINE = MergeTree()
+ORDER BY lesson_id;
+
+-- 3. Сырой лог событий
+CREATE TABLE raw_events (
     event_id String,
     event_time DateTime,
     user_id String,
-    app_version String,
     platform String,
     device_model String,
-    country String,
-    session_id String,
+    app_version String,
     event_name String,
     event_properties String
 ) ENGINE = MergeTree()
 ORDER BY (event_time, event_name, user_id);
 
-4. ЗАнесем данные в созданные таблицы:
+-- 4. Таблица успеваемости
+CREATE TABLE fact_learning (
+    user_id String,
+    lesson_id String,
+    started_at DateTime,
+    completed_at DateTime,
+    status String,
+    score_percentage Float32,
+    time_spent_sec UInt32,
+    mistakes_count UInt16
+) ENGINE = MergeTree()
+ORDER BY (started_at, user_id);
 
-INSERT INTO users FROM INFILE '/users.csv' FORMAT CSVWithNames;
+-- 5. Таблица оплаты
+CREATE TABLE fact_payments (
+    transaction_id String,
+    user_id String,
+    event_time DateTime,
+    plan_type String,
+    revenue_rub Float32
+) ENGINE = MergeTree()
+ORDER BY (event_time, user_id);
 
-INSERT INTO events FROM INFILE '/events.csv' FORMAT CSVWithNames;
+6. Занесем данные в созданные таблицы:
+
+Переключаемся на созданную БД: "USE lingvodb;"
+Загружаем все файлы :
+"INSERT INTO dim_users FROM INFILE '/var/lib/clickhouse/user_files/dim_users.csv' FORMAT CSVWithNames;"
+
+"INSERT INTO dim_lessons_catalog FROM INFILE '/var/lib/clickhouse/user_files/dim_lessons_catalog.csv' FORMAT CSVWithNames;"
+
+"INSERT INTO raw_events FROM INFILE '/var/lib/clickhouse/user_files/raw_events.csv' FORMAT CSVWithNames;"
+
+"INSERT INTO fact_learning FROM INFILE '/var/lib/clickhouse/user_files/fact_learning.csv' FORMAT CSVWithNames;"
+
+"INSERT INTO fact_payments FROM INFILE '/var/lib/clickhouse/user_files/fact_payments.csv' FORMAT CSVWithNames;"
+
+
